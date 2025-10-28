@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISM Membership Analytics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📊</text></svg>">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- SheetJS -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <header class="app-header">
+        <div class="brand">
+            <span class="logo">📊</span>
+            <h1>ISM Membership Analytics</h1>
+        </div>
+        <div class="header-actions">
+            <button id="btn-refresh" class="icon-btn" title="Reload Data">⟳</button>
+            <button id="btn-filters" class="primary-btn" title="Filters">Filters ▾</button>
+        </div>
+    </header>
+
+    <aside id="filter-drawer" class="drawer">
+        <div class="drawer-header">
+            <h2>Filters</h2>
+            <button id="btn-close-drawer" class="icon-btn" title="Close">✕</button>
+        </div>
+        <div class="drawer-content">
+            <div class="form-group">
+                <label for="select-district">District</label>
+                <select id="select-district" multiple></select>
+            </div>
+            <div class="form-group">
+                <label for="select-zone">Zone</label>
+                <select id="select-zone" multiple></select>
+            </div>
+            <div class="form-group">
+                <label for="select-unit">Unit</label>
+                <select id="select-unit" multiple></select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="select-payment">Payment Status</label>
+                    <select id="select-payment">
+                        <option value="">All</option>
+                        <option value="paid">Paid</option>
+                        <option value="unpaid">Unpaid</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="select-submitted">Submitted Status</label>
+                    <select id="select-submitted">
+                        <option value="">All</option>
+                        <option value="submitted">Submitted</option>
+                        <option value="pending">Pending</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Unit membership count</label>
+                    <div class="count-filter">
+                        <select id="select-count-operator">
+                            <option value="">Any</option>
+                            <option value=">">&gt;</option>
+                            <option value="<">&lt;</option>
+                            <option value=">=">&gt;=</option>
+                            <option value="<=">&lt;=</option>
+                            <option value="=">=</option>
+                        </select>
+                        <input id="input-count" type="number" min="0" placeholder="Count" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="drawer-footer">
+            <button id="btn-reset" class="secondary-btn">Reset</button>
+            <button id="btn-apply" class="primary-btn">Apply</button>
+        </div>
+    </aside>
+
+    <main class="container">
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">Total Members</div>
+                <div class="kpi-value" id="kpi-total">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Paid</div>
+                <div class="kpi-value" id="kpi-paid">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Unpaid</div>
+                <div class="kpi-value" id="kpi-unpaid">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Submitted</div>
+                <div class="kpi-value" id="kpi-submitted">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Pending Submission</div>
+                <div class="kpi-value" id="kpi-pending">-</div>
+            </div>
+        </section>
+
+        <section class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-header">Payment Status</div>
+                <canvas id="chart-payment"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">Submission Status</div>
+                <canvas id="chart-submit"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">Members by District</div>
+                <canvas id="chart-by-district"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">Members by Zone</div>
+                <canvas id="chart-by-zone"></canvas>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <div class="table-header">
+                <div>Top Units by Members</div>
+                <div class="table-controls">
+                    <label for="input-top-n">Top</label>
+                    <input id="input-top-n" type="number" min="1" value="10" />
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table id="table-units">
+                    <thead>
+                        <tr>
+                            <th>Unit</th>
+                            <th>Zone</th>
+                            <th>District</th>
+                            <th>Members</th>
+                            <th>Paid</th>
+                            <th>Unpaid</th>
+                            <th>Submitted</th>
+                            <th>Pending</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script>
+        window.__EXCEL_PATHS__ = [
+            'assets/data/registration.xlxs', // as provided
+            'assets/data/registration.xlsx'  // fallback common extension
+        ];
+    </script>
+    <script src="assets/js/app.js"></script>
+</body>
+</html>
+
+
