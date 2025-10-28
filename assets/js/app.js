@@ -1,4 +1,5 @@
 (() => {
+  const isLocalFile = typeof location !== 'undefined' && location.protocol === 'file:';
   const toastEl = document.getElementById('toast');
   function showToast(message) {
     if (!toastEl) return;
@@ -464,6 +465,14 @@
 
   async function init(forceReload = false) {
     try {
+      if (isLocalFile) {
+        if (State.rawRows.length === 0) {
+          showToast('Local file mode: click "Open File" to load Excel');
+        } else {
+          regenerate();
+        }
+        return;
+      }
       if (forceReload || State.rawRows.length === 0) {
         await loadData();
         resetFilters();
