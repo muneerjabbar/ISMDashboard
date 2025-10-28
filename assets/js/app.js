@@ -14,8 +14,6 @@
     btnApply: document.getElementById('btn-apply'),
     btnReset: document.getElementById('btn-reset'),
     btnRefresh: document.getElementById('btn-refresh'),
-    btnOpenFile: document.getElementById('btn-open-file'),
-    inputFile: document.getElementById('input-file'),
     drawer: document.getElementById('filter-drawer'),
     selectDistrict: document.getElementById('select-district'),
     selectZone: document.getElementById('select-zone'),
@@ -207,8 +205,14 @@
     return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
   }
 
-  function populateSelect(select, values) {
+  function populateSelect(select, values, includeAll = false) {
     select.innerHTML = '';
+    if (includeAll) {
+      const optAll = document.createElement('option');
+      optAll.value = '';
+      optAll.textContent = 'All';
+      select.appendChild(optAll);
+    }
     for (const v of values) {
       const opt = document.createElement('option');
       opt.value = v;
@@ -219,9 +223,9 @@
 
   function populateFilters(rows) {
     const districts = uniqueSorted(rows.map(r => readCell(r, 'district')).filter(v => v && normalizeValue(v) !== 'unknown'));
-    populateSelect(elements.selectDistrict, districts);
-    // default select first district if exists
-    if (elements.selectDistrict.options.length) elements.selectDistrict.selectedIndex = 0;
+    populateSelect(elements.selectDistrict, districts, true);
+    // default All selected
+    elements.selectDistrict.value = '';
     updateCascadingOptions();
   }
 
@@ -231,20 +235,18 @@
       ? State.rawRows.filter(r => readCell(r, 'district') === selectedDistrict)
       : State.rawRows;
     const zones = uniqueSorted(rowsAfterDistrict.map(r => readCell(r, 'zone')).filter(v => v && normalizeValue(v) !== 'unknown'));
-    const keepZones = new Set([elements.selectZone.value]);
-    populateSelect(elements.selectZone, zones);
-    Array.from(elements.selectZone.options).forEach(opt => { if (keepZones.has(opt.value)) opt.selected = true; });
-    if (!elements.selectZone.value && elements.selectZone.options.length) elements.selectZone.selectedIndex = 0;
+    const prevZone = elements.selectZone.value;
+    populateSelect(elements.selectZone, zones, true);
+    elements.selectZone.value = prevZone && zones.includes(prevZone) ? prevZone : '';
 
     const selectedZone = elements.selectZone.value;
     const rowsAfterZone = selectedZone
       ? rowsAfterDistrict.filter(r => readCell(r, 'zone') === selectedZone)
       : rowsAfterDistrict;
     const units = uniqueSorted(rowsAfterZone.map(r => readCell(r, 'unit')).filter(v => v && normalizeValue(v) !== 'unknown'));
-    const keepUnits = new Set([elements.selectUnit.value]);
-    populateSelect(elements.selectUnit, units);
-    Array.from(elements.selectUnit.options).forEach(opt => { if (keepUnits.has(opt.value)) opt.selected = true; });
-    if (!elements.selectUnit.value && elements.selectUnit.options.length) elements.selectUnit.selectedIndex = 0;
+    const prevUnit = elements.selectUnit.value;
+    populateSelect(elements.selectUnit, units, true);
+    elements.selectUnit.value = prevUnit && units.includes(prevUnit) ? prevUnit : '';
   }
 
   function getSingleValue(select) { return select.value || ''; }
@@ -365,6 +367,64 @@
     if (elements.kpiUUnits) elements.kpiUUnits.textContent = Intl.NumberFormat().format(kpis.uUnits || 0);
   }
 
+  function aggregateByKey(rows, key) {
+    const m = new Map();
+    for (const r of rows) {
+      const name = readCell(r, key);
+      if (!name || normalizeValue(name) === 'unknown') continue;
+      const pay = normalizeValue(readCell(r, 'payment'));
+      const sub = normalizeValue(readCell(r, 'submitted'));
+      if (!m.has(name)) m.set(name, { name, members: 0, paid: 0, unpaid: 0, submitted: 0, pending: 0 });
+      const o = m.get(name);
+      o.members++;
+      const isPaid = pay === 'paid' || pay === 'success' || pay === 'completed' || pay === 'yes';
+      const isSubmitted = sub === 'submitted' || sub === 'yes' || sub === 'complete' || sub === 'completed';
+      if (isPaid) o.paid++; else o.unpaid++;
+      if (isSubmitted) o.submitted++; else o.pending++;
+    }
+    return Array.from(m.values()).sort((a, b) => b.members - a.members);
+  }
+
+  function renderTopDistricts(rows) {
+    const topN = Math.max(1, Number((document.getElementById('input-top-districts') || {}).value) || 20);
+    const stats = aggregateByKey(rows, 'district').slice(0, topN);
+    const tbody = (document.querySelector('#table-districts tbody'));
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    for (const s of stats) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(s.name)}</td>
+        <td>${s.members}</td>
+        <td>${s.paid}</td>
+        <td>${s.unpaid}</td>
+        <td>${s.submitted}</td>
+        <td>${s.pending}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function renderTopZones(rows) {
+    const topN = Math.max(1, Number((document.getElementById('input-top-zones') || {}).value) || 20);
+    const stats = aggregateByKey(rows, 'zone').slice(0, topN);
+    const tbody = (document.querySelector('#table-zones tbody'));
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    for (const s of stats) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(s.name)}</td>
+        <td>${s.members}</td>
+        <td>${s.paid}</td>
+        <td>${s.unpaid}</td>
+        <td>${s.submitted}</td>
+        <td>${s.pending}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
   function chartColors(n) {
     const base = ['#4f7cff', '#3ccf91', '#ffcc66', '#ff6b6b', '#a78bfa', '#22d3ee', '#f472b6', '#f59e0b'];
     const arr = [];
@@ -402,34 +462,6 @@
       labels: ['Submitted', 'Pending'],
       datasets: [{ data: [kpis.submitted, kpis.pending], backgroundColor: ['#4f7cff', '#ffcc66'] }]
     }, { plugins: { legend: { labels: { color: '#e8ecf8' } } } });
-
-    const byDistrict = groupCount(rows, 'district');
-    const dLabels = Array.from(byDistrict.keys());
-    const dValues = Array.from(byDistrict.values());
-    ensureChart('chart-by-district', 'bar', {
-      labels: dLabels,
-      datasets: [{ label: 'Members', data: dValues, backgroundColor: chartColors(dLabels.length) }]
-    }, {
-      scales: {
-        x: { ticks: { color: '#9aa3ba' } },
-        y: { ticks: { color: '#9aa3ba' }, beginAtZero: true }
-      },
-      plugins: { legend: { labels: { color: '#e8ecf8' } } }
-    });
-
-    const byZone = groupCount(rows, 'zone');
-    const zLabels = Array.from(byZone.keys());
-    const zValues = Array.from(byZone.values());
-    ensureChart('chart-by-zone', 'bar', {
-      labels: zLabels,
-      datasets: [{ label: 'Members', data: zValues, backgroundColor: chartColors(zLabels.length) }]
-    }, {
-      scales: {
-        x: { ticks: { color: '#9aa3ba' } },
-        y: { ticks: { color: '#9aa3ba' }, beginAtZero: true }
-      },
-      plugins: { legend: { labels: { color: '#e8ecf8' } } }
-    });
   }
 
   function renderTable(rows) {
@@ -507,6 +539,8 @@
     applyFilters();
     renderCharts(State.filteredRows);
     renderTable(State.filteredRows);
+    renderTopDistricts(State.filteredRows);
+    renderTopZones(State.filteredRows);
   }
 
   function bindEvents() {
@@ -516,6 +550,10 @@
     elements.btnApply.addEventListener('click', () => { captureFiltersFromUI(); regenerate(); closeDrawer(); showToast('Filters applied'); });
     elements.btnRefresh.addEventListener('click', async () => { try { await init(true); } catch (e) { showToast(String(e.message || e)); } });
     elements.inputTopN.addEventListener('change', () => renderTable(State.filteredRows));
+    const topD = document.getElementById('input-top-districts');
+    const topZ = document.getElementById('input-top-zones');
+    if (topD) topD.addEventListener('change', () => renderTopDistricts(State.filteredRows));
+    if (topZ) topZ.addEventListener('change', () => renderTopZones(State.filteredRows));
     const ths = document.querySelectorAll('#table-units thead th.sortable');
     ths.forEach(th => {
       th.addEventListener('click', () => {
@@ -532,14 +570,6 @@
     // cascade selects
     elements.selectDistrict.addEventListener('change', () => { updateCascadingOptions(); });
     elements.selectZone.addEventListener('change', () => { updateCascadingOptions(); });
-    if (elements.btnOpenFile && elements.inputFile) {
-      elements.btnOpenFile.addEventListener('click', () => elements.inputFile.click());
-      elements.inputFile.addEventListener('change', async (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        try { await loadFromLocalFile(file); } catch (err) { showToast(err.message || 'Failed to load local file'); }
-      });
-    }
   }
 
   function isNumericKey(key) {
@@ -548,14 +578,6 @@
 
   async function init(forceReload = false) {
     try {
-      if (isLocalFile) {
-        if (State.rawRows.length === 0) {
-          showToast('Local file mode: click "Open File" to load Excel');
-        } else {
-          regenerate();
-        }
-        return;
-      }
       if (forceReload || State.rawRows.length === 0) {
         await loadData();
         resetFilters();

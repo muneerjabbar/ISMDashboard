@@ -21,8 +21,6 @@
             <h1>ISM Membership Analytics</h1>
         </div>
         <div class="header-actions">
-            <input id="input-file" type="file" accept=".xlsx,.xls,.csv" style="display:none" />
-            <button id="btn-open-file" class="secondary-btn" title="Open local Excel">Open File</button>
             <button id="btn-refresh" class="icon-btn" title="Reload Data">⟳</button>
             <button id="btn-filters" class="primary-btn" title="Filters">Filters ▾</button>
         </div>
@@ -88,6 +86,7 @@
     </aside>
 
     <main class="container">
+        <div class="kpi-meta" id="kpi-meta">Last refreshed: 2025-10-28 06:00 PM</div>
         <section class="kpi-grid">
             <div class="kpi-card">
                 <div class="kpi-title">Total Members</div>
@@ -132,13 +131,57 @@
                 <div class="chart-header">Submission Status</div>
                 <canvas id="chart-submit"></canvas>
             </div>
-            <div class="chart-card">
-                <div class="chart-header">Members by District</div>
-                <canvas id="chart-by-district"></canvas>
+        </section>
+
+
+
+        <section class="table-card">
+            <div class="table-header">
+                <div>Top Districts by Members</div>
+                <div class="table-controls">
+                    <label for="input-top-districts">Top</label>
+                    <input id="input-top-districts" type="number" min="1" value="20" />
+                </div>
             </div>
-            <div class="chart-card">
-                <div class="chart-header">Members by Zone</div>
-                <canvas id="chart-by-zone"></canvas>
+            <div class="table-wrapper">
+                <table id="table-districts">
+                    <thead>
+                        <tr>
+                            <th>District</th>
+                            <th>Members</th>
+                            <th>Paid</th>
+                            <th>Unpaid</th>
+                            <th>Submitted</th>
+                            <th>Pending</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <div class="table-header">
+                <div>Top Zones by Members</div>
+                <div class="table-controls">
+                    <label for="input-top-zones">Top</label>
+                    <input id="input-top-zones" type="number" min="1" value="20" />
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table id="table-zones">
+                    <thead>
+                        <tr>
+                            <th>Zone</th>
+                            <th>Members</th>
+                            <th>Paid</th>
+                            <th>Unpaid</th>
+                            <th>Submitted</th>
+                            <th>Pending</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
         </section>
 
@@ -168,6 +211,7 @@
                 </table>
             </div>
         </section>
+                
     </main>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
