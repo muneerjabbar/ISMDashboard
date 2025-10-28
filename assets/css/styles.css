@@ -55,7 +55,7 @@ body {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 12px;
 }
 .kpi-card {
@@ -65,7 +65,7 @@ body {
   padding: 14px;
 }
 .kpi-title { color: var(--muted); font-size: 12px; }
-.kpi-value { font-size: 26px; font-weight: 700; margin-top: 6px; }
+.kpi-value { font-size: 26px; font-weight: 700; margin-top: 6px; word-break: break-word; }
 
 .charts-grid {
   margin-top: 16px;
@@ -148,11 +148,21 @@ select[multiple] { height: 120px; }
 
 /* Responsive */
 @media (max-width: 1100px) {
-  .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .charts-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
   .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .table-wrapper { overflow-x: auto; }
+  .app-header { padding: 10px 12px; }
+  .header-actions { gap: 6px; }
+  .kpi-value { font-size: 22px; }
 }
+
+/* Sortable table headers */
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable::after { content: ' \25BE'; opacity: 0.35; font-size: 11px; }
+th.sortable.sort-asc::after { content: ' \25B4'; }
+th.sortable.sort-desc::after { content: ' \25BE'; }
 
 

@@ -109,6 +109,18 @@
                 <div class="kpi-title">Pending Submission</div>
                 <div class="kpi-value" id="kpi-pending">-</div>
             </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Unique Districts</div>
+                <div class="kpi-value" id="kpi-udistricts">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Unique Zones</div>
+                <div class="kpi-value" id="kpi-uzones">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Unique Units</div>
+                <div class="kpi-value" id="kpi-uunits">-</div>
+            </div>
         </section>
 
         <section class="charts-grid">
@@ -142,14 +154,14 @@
                 <table id="table-units">
                     <thead>
                         <tr>
-                            <th>Unit</th>
-                            <th>Zone</th>
-                            <th>District</th>
-                            <th>Members</th>
-                            <th>Paid</th>
-                            <th>Unpaid</th>
-                            <th>Submitted</th>
-                            <th>Pending</th>
+                            <th data-key="unit" class="sortable">Unit</th>
+                            <th data-key="zone" class="sortable">Zone</th>
+                            <th data-key="district" class="sortable">District</th>
+                            <th data-key="members" class="sortable">Members</th>
+                            <th data-key="paid" class="sortable">Paid</th>
+                            <th data-key="unpaid" class="sortable">Unpaid</th>
+                            <th data-key="submitted" class="sortable">Submitted</th>
+                            <th data-key="pending" class="sortable">Pending</th>
                         </tr>
                     </thead>
                     <tbody></tbody>

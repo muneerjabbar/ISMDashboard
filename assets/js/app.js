@@ -30,6 +30,9 @@
     kpiUnpaid: document.getElementById('kpi-unpaid'),
     kpiSubmitted: document.getElementById('kpi-submitted'),
     kpiPending: document.getElementById('kpi-pending'),
+    kpiUDistricts: document.getElementById('kpi-udistricts'),
+    kpiUZones: document.getElementById('kpi-uzones'),
+    kpiUUnits: document.getElementById('kpi-uunits'),
     tableBody: document.querySelector('#table-units tbody')
   };
 
@@ -43,6 +46,7 @@
   const State = {
     rawRows: [],
     filteredRows: [],
+    sort: { key: 'members', dir: 'desc' },
     filters: {
       districts: [],
       zones: [],
@@ -277,15 +281,24 @@
   function computeKPIs(rows) {
     const total = rows.length;
     let paid = 0, unpaid = 0, submitted = 0, pending = 0;
+    const dset = new Set();
+    const zset = new Set();
+    const uset = new Set();
     for (const r of rows) {
       const pay = normalizeValue(readCell(r, 'payment'));
       const sub = normalizeValue(readCell(r, 'submitted'));
+      const d = readCell(r, 'district');
+      const z = readCell(r, 'zone');
+      const u = readCell(r, 'unit');
       const isPaid = pay === 'paid' || pay === 'success' || pay === 'completed' || pay === 'yes';
       const isSubmitted = sub === 'submitted' || sub === 'yes' || sub === 'complete' || sub === 'completed';
       if (isPaid) paid++; else unpaid++;
       if (isSubmitted) submitted++; else pending++;
+      if (d && normalizeValue(d) !== 'unknown') dset.add(d);
+      if (z && normalizeValue(z) !== 'unknown') zset.add(z);
+      if (u && normalizeValue(u) !== 'unknown') uset.add(u);
     }
-    return { total, paid, unpaid, submitted, pending };
+    return { total, paid, unpaid, submitted, pending, uDistricts: dset.size, uZones: zset.size, uUnits: uset.size };
   }
 
   function groupCount(rows, key) {
@@ -322,6 +335,9 @@
     elements.kpiUnpaid.textContent = Intl.NumberFormat().format(kpis.unpaid);
     elements.kpiSubmitted.textContent = Intl.NumberFormat().format(kpis.submitted);
     elements.kpiPending.textContent = Intl.NumberFormat().format(kpis.pending);
+    if (elements.kpiUDistricts) elements.kpiUDistricts.textContent = Intl.NumberFormat().format(kpis.uDistricts || 0);
+    if (elements.kpiUZones) elements.kpiUZones.textContent = Intl.NumberFormat().format(kpis.uZones || 0);
+    if (elements.kpiUUnits) elements.kpiUUnits.textContent = Intl.NumberFormat().format(kpis.uUnits || 0);
   }
 
   function chartColors(n) {
@@ -393,7 +409,8 @@
 
   function renderTable(rows) {
     const topN = Math.max(1, Number(elements.inputTopN.value) || 10);
-    const stats = computeUnitStats(rows).slice(0, topN);
+    const statsAll = computeUnitStats(rows);
+    const stats = sortStats(statsAll, State.sort).slice(0, topN);
     const tbody = elements.tableBody;
     tbody.innerHTML = '';
     for (const s of stats) {
@@ -410,6 +427,27 @@
       `;
       tbody.appendChild(tr);
     }
+    applyHeaderSortClasses();
+  }
+
+  function sortStats(list, sort) {
+    const { key, dir } = sort;
+    const factor = dir === 'asc' ? 1 : -1;
+    return list.slice().sort((a, b) => {
+      const av = a[key];
+      const bv = b[key];
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * factor;
+      return String(av).localeCompare(String(bv)) * factor;
+    });
+  }
+
+  function applyHeaderSortClasses() {
+    const ths = document.querySelectorAll('#table-units thead th.sortable');
+    ths.forEach(th => {
+      th.classList.remove('sort-asc', 'sort-desc');
+      const key = th.getAttribute('data-key');
+      if (key === State.sort.key) th.classList.add(State.sort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+    });
   }
 
   function escapeHtml(str) {
@@ -453,6 +491,19 @@
     elements.btnApply.addEventListener('click', () => { captureFiltersFromUI(); regenerate(); closeDrawer(); showToast('Filters applied'); });
     elements.btnRefresh.addEventListener('click', async () => { try { await init(true); } catch (e) { showToast(String(e.message || e)); } });
     elements.inputTopN.addEventListener('change', () => renderTable(State.filteredRows));
+    const ths = document.querySelectorAll('#table-units thead th.sortable');
+    ths.forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.getAttribute('data-key');
+        if (State.sort.key === key) {
+          State.sort.dir = State.sort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          State.sort.key = key;
+          State.sort.dir = isNumericKey(key) ? 'desc' : 'asc';
+        }
+        renderTable(State.filteredRows);
+      });
+    });
     if (elements.btnOpenFile && elements.inputFile) {
       elements.btnOpenFile.addEventListener('click', () => elements.inputFile.click());
       elements.inputFile.addEventListener('change', async (e) => {
@@ -461,6 +512,10 @@
         try { await loadFromLocalFile(file); } catch (err) { showToast(err.message || 'Failed to load local file'); }
       });
     }
+  }
+
+  function isNumericKey(key) {
+    return ['members', 'paid', 'unpaid', 'submitted', 'pending'].includes(key);
   }
 
   async function init(forceReload = false) {
