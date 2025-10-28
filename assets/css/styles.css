@@ -172,3 +172,8 @@ th.sortable.sort-asc::after { content: ' \25B4'; }
 th.sortable.sort-desc::after { content: ' \25BE'; }
 
 
+.yellow-divider {
+    height: 16px;
+    background-color: rgb(48, 48, 8);
+    margin: 20px 0; /* adds a bit of spacing above and below */
+}
