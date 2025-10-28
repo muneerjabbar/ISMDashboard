@@ -492,9 +492,9 @@
     for (const s of stats) {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${escapeHtml(s.unit)}</td>
+        <td>${escapeHtml(s.district)}</td>        
         <td>${escapeHtml(s.zone)}</td>
-        <td>${escapeHtml(s.district)}</td>
+        <td>${escapeHtml(s.unit)}</td>  
         <td>${s.members}</td>
         <td>${s.paid}</td>
         <td>${s.unpaid}</td>
