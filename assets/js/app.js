@@ -220,32 +220,34 @@
   function populateFilters(rows) {
     const districts = uniqueSorted(rows.map(r => readCell(r, 'district')).filter(v => v && normalizeValue(v) !== 'unknown'));
     populateSelect(elements.selectDistrict, districts);
+    // default select first district if exists
+    if (elements.selectDistrict.options.length) elements.selectDistrict.selectedIndex = 0;
     updateCascadingOptions();
   }
 
   function updateCascadingOptions() {
-    const selectedDistricts = Array.from(elements.selectDistrict.selectedOptions).map(o => o.value);
-    const rowsAfterDistrict = selectedDistricts.length
-      ? State.rawRows.filter(r => selectedDistricts.includes(readCell(r, 'district')))
+    const selectedDistrict = elements.selectDistrict.value;
+    const rowsAfterDistrict = selectedDistrict
+      ? State.rawRows.filter(r => readCell(r, 'district') === selectedDistrict)
       : State.rawRows;
     const zones = uniqueSorted(rowsAfterDistrict.map(r => readCell(r, 'zone')).filter(v => v && normalizeValue(v) !== 'unknown'));
-    const keepZones = new Set(Array.from(elements.selectZone.selectedOptions).map(o => o.value));
+    const keepZones = new Set([elements.selectZone.value]);
     populateSelect(elements.selectZone, zones);
     Array.from(elements.selectZone.options).forEach(opt => { if (keepZones.has(opt.value)) opt.selected = true; });
+    if (!elements.selectZone.value && elements.selectZone.options.length) elements.selectZone.selectedIndex = 0;
 
-    const selectedZones = Array.from(elements.selectZone.selectedOptions).map(o => o.value);
-    const rowsAfterZone = selectedZones.length
-      ? rowsAfterDistrict.filter(r => selectedZones.includes(readCell(r, 'zone')))
+    const selectedZone = elements.selectZone.value;
+    const rowsAfterZone = selectedZone
+      ? rowsAfterDistrict.filter(r => readCell(r, 'zone') === selectedZone)
       : rowsAfterDistrict;
     const units = uniqueSorted(rowsAfterZone.map(r => readCell(r, 'unit')).filter(v => v && normalizeValue(v) !== 'unknown'));
-    const keepUnits = new Set(Array.from(elements.selectUnit.selectedOptions).map(o => o.value));
+    const keepUnits = new Set([elements.selectUnit.value]);
     populateSelect(elements.selectUnit, units);
     Array.from(elements.selectUnit.options).forEach(opt => { if (keepUnits.has(opt.value)) opt.selected = true; });
+    if (!elements.selectUnit.value && elements.selectUnit.options.length) elements.selectUnit.selectedIndex = 0;
   }
 
-  function getMultiSelectValues(select) {
-    return Array.from(select.selectedOptions).map(o => o.value);
-  }
+  function getSingleValue(select) { return select.value || ''; }
 
   function applyFilters() {
     const f = State.filters;
@@ -492,9 +494,9 @@
   }
 
   function captureFiltersFromUI() {
-    State.filters.districts = getMultiSelectValues(elements.selectDistrict);
-    State.filters.zones = getMultiSelectValues(elements.selectZone);
-    State.filters.units = getMultiSelectValues(elements.selectUnit);
+    State.filters.districts = getSingleValue(elements.selectDistrict) ? [getSingleValue(elements.selectDistrict)] : [];
+    State.filters.zones = getSingleValue(elements.selectZone) ? [getSingleValue(elements.selectZone)] : [];
+    State.filters.units = getSingleValue(elements.selectUnit) ? [getSingleValue(elements.selectUnit)] : [];
     State.filters.payment = elements.selectPayment.value;
     State.filters.submitted = elements.selectSubmitted.value;
     State.filters.unitCountOp = elements.selectCountOperator.value;
@@ -527,6 +529,9 @@
         renderTable(State.filteredRows);
       });
     });
+    // cascade selects
+    elements.selectDistrict.addEventListener('change', () => { updateCascadingOptions(); });
+    elements.selectZone.addEventListener('change', () => { updateCascadingOptions(); });
     if (elements.btnOpenFile && elements.inputFile) {
       elements.btnOpenFile.addEventListener('click', () => elements.inputFile.click());
       elements.inputFile.addEventListener('change', async (e) => {
