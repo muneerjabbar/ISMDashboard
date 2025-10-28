@@ -21,6 +21,8 @@
             <h1>ISM Membership Analytics</h1>
         </div>
         <div class="header-actions">
+            <input id="input-file" type="file" accept=".xlsx,.xls,.csv" style="display:none" />
+            <button id="btn-open-file" class="secondary-btn" title="Open local Excel">Open File</button>
             <button id="btn-refresh" class="icon-btn" title="Reload Data">⟳</button>
             <button id="btn-filters" class="primary-btn" title="Filters">Filters ▾</button>
         </div>
@@ -160,7 +162,9 @@
 
     <script>
         window.__EXCEL_PATHS__ = [
-            'assets/data/registrations.xlsx', // as provided
+            'assets/data/registration.xlxs',
+            'assets/data/registration.xlsx',
+            'assets/data/registrations.xlsx'
         ];
     </script>
     <script src="assets/js/app.js"></script>

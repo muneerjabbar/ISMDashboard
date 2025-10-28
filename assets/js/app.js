@@ -13,6 +13,8 @@
     btnApply: document.getElementById('btn-apply'),
     btnReset: document.getElementById('btn-reset'),
     btnRefresh: document.getElementById('btn-refresh'),
+    btnOpenFile: document.getElementById('btn-open-file'),
+    inputFile: document.getElementById('input-file'),
     drawer: document.getElementById('filter-drawer'),
     selectDistrict: document.getElementById('select-district'),
     selectZone: document.getElementById('select-zone'),
@@ -111,6 +113,14 @@
     return rows;
   }
 
+  function loadWorkbookFromCsvText(text) {
+    const wb = XLSX.read(text, { type: 'string' });
+    const firstSheetName = wb.SheetNames[0];
+    const ws = wb.Sheets[firstSheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    return rows;
+  }
+
   async function fetchFirstAvailable(paths) {
     for (const p of paths) {
       try {
@@ -146,6 +156,44 @@
     State.filteredRows = cleaned.slice();
     populateFilters(State.rawRows);
     showToast(`Loaded ${State.rawRows.length} records from ${path}`);
+  }
+
+  async function loadFromLocalFile(file) {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const rows = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      if (ext === 'csv') {
+        reader.onload = () => {
+          try { resolve(loadWorkbookFromCsvText(reader.result)); } catch (e) { reject(e); }
+        };
+        reader.readAsText(file);
+      } else {
+        reader.onload = () => {
+          try { resolve(loadWorkbookFromArrayBuffer(reader.result)); } catch (e) { reject(e); }
+        };
+        reader.readAsArrayBuffer(file);
+      }
+    });
+    if (!rows.length) throw new Error('No rows found in the Excel file.');
+    State.headerMap = mapHeaders(Object.keys(rows[0]));
+    const cleaned = rows.filter((r) => {
+      const d = readCell(r, 'district');
+      const z = readCell(r, 'zone');
+      const u = readCell(r, 'unit');
+      if (!d && !z && !u) return false;
+      const dn = normalizeValue(d);
+      if (!dn || dn === 'general' || dn === 'others') return false;
+      const status = normalizeValue(readCell(r, 'membershipStatus'));
+      if (status === 'rejected') return false;
+      return true;
+    });
+    State.rawRows = cleaned;
+    State.filteredRows = cleaned.slice();
+    populateFilters(State.rawRows);
+    resetFilters();
+    regenerate();
+    showToast(`Loaded ${State.rawRows.length} records from ${file.name}`);
   }
 
   function uniqueSorted(values) {
@@ -404,6 +452,14 @@
     elements.btnApply.addEventListener('click', () => { captureFiltersFromUI(); regenerate(); closeDrawer(); showToast('Filters applied'); });
     elements.btnRefresh.addEventListener('click', async () => { try { await init(true); } catch (e) { showToast(String(e.message || e)); } });
     elements.inputTopN.addEventListener('change', () => renderTable(State.filteredRows));
+    if (elements.btnOpenFile && elements.inputFile) {
+      elements.btnOpenFile.addEventListener('click', () => elements.inputFile.click());
+      elements.inputFile.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        try { await loadFromLocalFile(file); } catch (err) { showToast(err.message || 'Failed to load local file'); }
+      });
+    }
   }
 
   async function init(forceReload = false) {
