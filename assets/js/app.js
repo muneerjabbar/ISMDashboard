@@ -150,9 +150,10 @@
       const d = readCell(r, 'district');
       const z = readCell(r, 'zone');
       const u = readCell(r, 'unit');
-      if (!d && !z && !u) return false;
       const dn = normalizeValue(d);
-      if (!dn || dn === 'general' || dn === 'others') return false;
+      if (!dn || dn === 'general' || dn === 'others' || dn === 'unknown') return false;
+      if (!z || normalizeValue(z) === 'unknown') return false;
+      if (!u || normalizeValue(u) === 'unknown') return false;
       const status = normalizeValue(readCell(r, 'membershipStatus'));
       if (status === 'rejected') return false;
       return true;
@@ -186,9 +187,10 @@
       const d = readCell(r, 'district');
       const z = readCell(r, 'zone');
       const u = readCell(r, 'unit');
-      if (!d && !z && !u) return false;
       const dn = normalizeValue(d);
-      if (!dn || dn === 'general' || dn === 'others') return false;
+      if (!dn || dn === 'general' || dn === 'others' || dn === 'unknown') return false;
+      if (!z || normalizeValue(z) === 'unknown') return false;
+      if (!u || normalizeValue(u) === 'unknown') return false;
       const status = normalizeValue(readCell(r, 'membershipStatus'));
       if (status === 'rejected') return false;
       return true;
@@ -216,12 +218,29 @@
   }
 
   function populateFilters(rows) {
-    const districts = uniqueSorted(rows.map(r => readCell(r, 'district')));
-    const zones = uniqueSorted(rows.map(r => readCell(r, 'zone')));
-    const units = uniqueSorted(rows.map(r => readCell(r, 'unit')));
+    const districts = uniqueSorted(rows.map(r => readCell(r, 'district')).filter(v => v && normalizeValue(v) !== 'unknown'));
     populateSelect(elements.selectDistrict, districts);
+    updateCascadingOptions();
+  }
+
+  function updateCascadingOptions() {
+    const selectedDistricts = Array.from(elements.selectDistrict.selectedOptions).map(o => o.value);
+    const rowsAfterDistrict = selectedDistricts.length
+      ? State.rawRows.filter(r => selectedDistricts.includes(readCell(r, 'district')))
+      : State.rawRows;
+    const zones = uniqueSorted(rowsAfterDistrict.map(r => readCell(r, 'zone')).filter(v => v && normalizeValue(v) !== 'unknown'));
+    const keepZones = new Set(Array.from(elements.selectZone.selectedOptions).map(o => o.value));
     populateSelect(elements.selectZone, zones);
+    Array.from(elements.selectZone.options).forEach(opt => { if (keepZones.has(opt.value)) opt.selected = true; });
+
+    const selectedZones = Array.from(elements.selectZone.selectedOptions).map(o => o.value);
+    const rowsAfterZone = selectedZones.length
+      ? rowsAfterDistrict.filter(r => selectedZones.includes(readCell(r, 'zone')))
+      : rowsAfterDistrict;
+    const units = uniqueSorted(rowsAfterZone.map(r => readCell(r, 'unit')).filter(v => v && normalizeValue(v) !== 'unknown'));
+    const keepUnits = new Set(Array.from(elements.selectUnit.selectedOptions).map(o => o.value));
     populateSelect(elements.selectUnit, units);
+    Array.from(elements.selectUnit.options).forEach(opt => { if (keepUnits.has(opt.value)) opt.selected = true; });
   }
 
   function getMultiSelectValues(select) {
@@ -304,7 +323,8 @@
   function groupCount(rows, key) {
     const m = new Map();
     for (const r of rows) {
-      const k = readCell(r, key) || 'Unknown';
+      const k = readCell(r, key);
+      if (!k || normalizeValue(k) === 'unknown') continue;
       m.set(k, (m.get(k) || 0) + 1);
     }
     return m;
@@ -313,9 +333,12 @@
   function computeUnitStats(rows) {
     const m = new Map();
     for (const r of rows) {
-      const unit = readCell(r, 'unit') || 'Unknown';
-      const zone = readCell(r, 'zone') || '';
-      const district = readCell(r, 'district') || '';
+      const unit = readCell(r, 'unit');
+      const zone = readCell(r, 'zone');
+      const district = readCell(r, 'district');
+      if (!unit || normalizeValue(unit) === 'unknown') continue;
+      if (!zone || normalizeValue(zone) === 'unknown') continue;
+      if (!district || normalizeValue(district) === 'unknown') continue;
       const pay = normalizeValue(readCell(r, 'payment'));
       const sub = normalizeValue(readCell(r, 'submitted'));
       if (!m.has(unit)) m.set(unit, { unit, zone, district, members: 0, paid: 0, unpaid: 0, submitted: 0, pending: 0 });
