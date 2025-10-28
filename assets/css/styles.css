@@ -96,6 +96,9 @@ body {
   padding: 12px;
   border-bottom: 1px solid var(--border);
 }
+.table-header.zone-header {
+  background: linear-gradient(180deg, rgba(79,124,255,0.15), rgba(15,21,48,0.9));
+}
 .table-header .table-controls { display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .table-wrapper { overflow: auto; }
 table { width: 100%; border-collapse: collapse; }

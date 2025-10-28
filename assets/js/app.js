@@ -407,14 +407,33 @@
 
   function renderTopZones(rows) {
     const topN = Math.max(1, Number((document.getElementById('input-top-zones') || {}).value) || 20);
-    const stats = aggregateByKey(rows, 'zone').slice(0, topN);
+    // aggregate by Zone with District context
+    const m = new Map(); // key: `${district}||${zone}`
+    for (const r of rows) {
+      const district = readCell(r, 'district');
+      const zone = readCell(r, 'zone');
+      if (!district || normalizeValue(district) === 'unknown') continue;
+      if (!zone || normalizeValue(zone) === 'unknown') continue;
+      const key = district + '||' + zone;
+      const pay = normalizeValue(readCell(r, 'payment'));
+      const sub = normalizeValue(readCell(r, 'submitted'));
+      if (!m.has(key)) m.set(key, { district, zone, members: 0, paid: 0, unpaid: 0, submitted: 0, pending: 0 });
+      const o = m.get(key);
+      o.members++;
+      const isPaid = pay === 'paid' || pay === 'success' || pay === 'completed' || pay === 'yes';
+      const isSubmitted = sub === 'submitted' || sub === 'yes' || sub === 'complete' || sub === 'completed';
+      if (isPaid) o.paid++; else o.unpaid++;
+      if (isSubmitted) o.submitted++; else o.pending++;
+    }
+    const stats = Array.from(m.values()).sort((a, b) => b.members - a.members).slice(0, topN);
     const tbody = (document.querySelector('#table-zones tbody'));
     if (!tbody) return;
     tbody.innerHTML = '';
     for (const s of stats) {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${escapeHtml(s.name)}</td>
+        <td>${escapeHtml(s.district)}</td>
+        <td>${escapeHtml(s.zone)}</td>
         <td>${s.members}</td>
         <td>${s.paid}</td>
         <td>${s.unpaid}</td>
