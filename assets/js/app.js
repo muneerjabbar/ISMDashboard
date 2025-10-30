@@ -476,6 +476,16 @@
     return id;
   }
 
+  /* Added for adjusting bar chart height based on label count */
+  function setBarChartHeight(canvasId, labelCount, min=320, perLabel=40, max=1200) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    // force vertical height for horizontal bar charts
+    const px = Math.max(min, Math.min(max, labelCount * perLabel));
+    canvas.style.height = px + 'px';
+  }
+/* End of Added for adjusting bar chart height based on label count */
+
   function renderCharts(rows) {
     const kpis = computeKPIs(rows);
     updateKPIs(kpis);
