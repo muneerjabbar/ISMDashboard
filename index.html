@@ -11,6 +11,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📊</text></svg>">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     <!-- SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -21,6 +22,8 @@
             <h1>ISM Membership Analytics</h1>
         </div>
         <div class="header-actions">
+            <input id="input-file" type="file" accept=".xlsx,.xls,.csv" style="display:none" />
+            <!-- <button id="btn-open-file" class="secondary-btn" title="Open local Excel">Open File</button> -->
             <button id="btn-refresh" class="icon-btn" title="Reload Data">⟳</button>
             <button id="btn-filters" class="primary-btn" title="Filters">Filters ▾</button>
         </div>
@@ -128,6 +131,32 @@
             <div class="chart-card">
                 <div class="chart-header">Submission Status</div>
                 <canvas id="chart-submit"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">Age Groups <br><small>(based on age field)</small></div>
+                <canvas id="chart-age-group"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">Profession Analytics</div>
+                <canvas id="chart-profession"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">Qualification Analytics</div>
+                <canvas id="chart-qualification"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    Top 10 Zones (by Members)
+                    <div class="rotate-hint">For best chart view, please rotate your phone to landscape</div>
+                </div>
+                <canvas id="chart-top-zones"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    Top 10 Units (by Members)
+                    <div class="rotate-hint">For best chart view, please rotate your phone to landscape</div>
+                </div>
+                <canvas id="chart-top-units"></canvas>
             </div>
         </section>
 

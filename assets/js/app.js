@@ -1,5 +1,8 @@
 (() => {
   const isLocalFile = typeof location !== 'undefined' && location.protocol === 'file:';
+  if (window.Chart && window.ChartDataLabels) {
+    try { Chart.register(ChartDataLabels); } catch (_) {}
+  }
   const toastEl = document.getElementById('toast');
   function showToast(message) {
     if (!toastEl) return;
@@ -465,6 +468,11 @@
     if (id === 'chart-submit') return 'submit';
     if (id === 'chart-by-district') return 'byDistrict';
     if (id === 'chart-by-zone') return 'byZone';
+    if (id === 'chart-age-group') return 'ageGroup';
+    if (id === 'chart-profession') return 'profession';
+    if (id === 'chart-qualification') return 'qualification';
+    if (id === 'chart-top-zones') return 'topZones';
+    if (id === 'chart-top-units') return 'topUnits';
     return id;
   }
 
@@ -481,6 +489,69 @@
       labels: ['Submitted', 'Pending'],
       datasets: [{ data: [kpis.submitted, kpis.pending], backgroundColor: ['#4f7cff', '#ffcc66'] }]
     }, { plugins: { legend: { labels: { color: '#e8ecf8' } } } });
+
+    // Age Group Pie:
+  const dobKey = getColNameMatch(Object.keys(rows[0]||{}), ['date of birth','dob','d.o.b','birth date','birthdate']);
+  if (dobKey) {
+    const ag = parseAgeGroups(rows, dobKey);
+      ensureChart('chart-age-group', 'pie', {
+        labels: Object.keys(ag),
+      datasets:[{data:Object.values(ag), backgroundColor: chartColors(5)}]
+    }, {plugins:{legend:{labels:{color:'#e8ecf8'}}, datalabels:{color:'#e8ecf8', formatter:(v)=>v}}});
+    }
+    // Profession:
+  const professionKey = getColNameMatch(
+    Object.keys(rows[0]||{}),
+    ['occupation','profession','working as','job','employment','profession/occupation']
+  );
+    if (professionKey) {
+      const top10 = groupBarData(rows, professionKey, 10);
+      ensureChart('chart-profession','bar',{
+        labels: top10.map(([k])=>k),
+      datasets:[{data:top10.map(([,v])=>v), backgroundColor:chartColors(top10.length), label:'Count'}]
+    }, {indexAxis: 'y',plugins:{legend:{display:false}, datalabels:{align:'end', anchor:'end', color:'#e8ecf8', formatter:(v)=>v}},scales:{x:{ticks:{color:'#9aa3ba'}},y:{ticks:{color:'#9aa3ba'}}}});
+    }
+    // Qualification:
+    const qualificationKey = getColNameMatch(Object.keys(rows[0]||{}), ['qualification','education','educational qualification','degree','quali']);
+    if (qualificationKey) {
+      const top10 = groupBarData(rows, qualificationKey, 10);
+      ensureChart('chart-qualification','bar',{
+        labels: top10.map(([k])=>k),
+      datasets:[{data:top10.map(([,v])=>v), backgroundColor:chartColors(top10.length), label:'Count'}]
+    }, {indexAxis: 'y',plugins:{legend:{display:false}, datalabels:{align:'end', anchor:'end', color:'#e8ecf8', formatter:(v)=>v}},scales:{x:{ticks:{color:'#9aa3ba'}},y:{ticks:{color:'#9aa3ba'}}}});
+    }
+    // Top 10 Zones:
+    const zoneKey = getColNameMatch(Object.keys(rows[0]||{}), ['zone','area','region']);
+    if (zoneKey) {
+    const zoneCounts = groupBarData(rows, zoneKey, 10);
+      ensureChart('chart-top-zones', 'bar', {
+        labels: zoneCounts.map(([k])=>k),
+        datasets: [{data: zoneCounts.map(([,v])=>v), backgroundColor: chartColors(zoneCounts.length), label:'Members'}]
+      }, {
+        indexAxis: 'y',
+        plugins: {
+        legend:{display:false},
+        datalabels:{anchor:'end',align:'end', color:'#e8ecf8', formatter:(v)=>v}
+        },
+        scales:{x:{ticks:{color:'#9aa3ba'}}, y:{ticks:{color:'#9aa3ba'}}}
+      });
+    }
+    // Top 10 Units:
+    const unitKey = getColNameMatch(Object.keys(rows[0]||{}), ['unit','branch','unit name']);
+    if (unitKey) {
+    const unitCounts = groupBarData(rows, unitKey, 10);
+      ensureChart('chart-top-units', 'bar', {
+        labels: unitCounts.map(([k])=>k),
+        datasets: [{data: unitCounts.map(([,v])=>v), backgroundColor: chartColors(unitCounts.length), label:'Members'}]
+      }, {
+        indexAxis: 'y',
+        plugins: {
+        legend:{display:false},
+        datalabels:{anchor:'end',align:'end', color:'#e8ecf8', formatter:(v)=>v}
+        },
+        scales:{x:{ticks:{color:'#9aa3ba'}}, y:{ticks:{color:'#9aa3ba'}}}
+      });
+    }
   }
 
   function renderTable(rows) {
@@ -567,7 +638,12 @@
     elements.btnCloseDrawer.addEventListener('click', closeDrawer);
     elements.btnReset.addEventListener('click', () => { resetFilters(); regenerate(); showToast('Filters reset'); });
     elements.btnApply.addEventListener('click', () => { captureFiltersFromUI(); regenerate(); closeDrawer(); showToast('Filters applied'); });
-    elements.btnRefresh.addEventListener('click', async () => { try { await init(true); } catch (e) { showToast(String(e.message || e)); } });
+    elements.btnRefresh.addEventListener('click', async () => {
+      // clear in-memory data and reload Excel
+      State.rawRows = [];
+      State.filteredRows = [];
+      location.reload(); // ensures we re-fetch from server, not stale data
+    });
     elements.inputTopN.addEventListener('change', () => renderTable(State.filteredRows));
     const topD = document.getElementById('input-top-districts');
     const topZ = document.getElementById('input-top-zones');
@@ -593,6 +669,83 @@
 
   function isNumericKey(key) {
     return ['members', 'paid', 'unpaid', 'submitted', 'pending'].includes(key);
+  }
+
+  // --- UTILS ---
+function excelSerialToDate(serial) {
+  const utcDays = Math.floor(serial - 25569);
+  const utcValue = utcDays * 86400; // seconds
+  const dateInfo = new Date(utcValue * 1000);
+  return dateInfo;
+}
+function toDate(value) {
+  if (value instanceof Date) return value;
+  if (typeof value === 'number' && value > 1000 && value < 60000) {
+    return excelSerialToDate(value);
+  }
+  if (typeof value === 'string') {
+    const s = value.trim();
+    // Try common dd/mm/yyyy, yyyy-mm-dd
+    const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if (m) {
+      const d = parseInt(m[1], 10);
+      const mo = parseInt(m[2], 10) - 1;
+      let y = parseInt(m[3], 10);
+      if (y < 100) y += 2000;
+      return new Date(y, mo, d);
+    }
+    const dt = new Date(s);
+    if (!isNaN(dt.getTime())) return dt;
+  }
+  return null;
+}
+function parseAgeGroups(rows, dobKey) {
+    const ageGroups = {
+      '15-22': 0,
+      '22-30': 0,
+      '30-40': 0,
+      '40-45': 0,
+      'Unknown': 0
+    };
+    for (const r of rows) {
+    const dobVal = r[dobKey];
+    const dt = toDate(dobVal);
+    let age = NaN;
+    if (dt) {
+      const today = new Date();
+      age = today.getFullYear() - dt.getFullYear();
+      const m = today.getMonth() - dt.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dt.getDate())) age--;
+    }
+      if (isNaN(age) || age < 10) { ageGroups['Unknown']++; continue; }
+      if (age >= 15 && age <= 22) ageGroups['15-22']++;
+      else if (age > 22 && age <= 30) ageGroups['22-30']++;
+      else if (age > 30 && age <= 40) ageGroups['30-40']++;
+      else if (age > 40 && age <= 45) ageGroups['40-45']++;
+      else ageGroups['Unknown']++;
+    }
+    return ageGroups;
+  }
+function getColNameMatch(headers, wanted) {
+  // Returns first column matching any in wanted array (exact or partial match after normalization)
+  for (let h of headers) {
+    const nh = normalizeHeader(h);
+    for (let w of wanted) {
+      const nw = normalizeHeader(w);
+      if (nh === nw || nh.includes(nw) || nw.includes(nh)) return h;
+    }
+  }
+  return null;
+}
+  function groupBarData(rows, key, topN = 999) {
+    const count = {};
+    for (const r of rows) {
+      const val = r[key];
+      if (!val || normalizeValue(val) === 'unknown') continue;
+      count[val] = (count[val] || 0) + 1;
+    }
+    const groupArr = Object.entries(count).sort((a,b) => b[1] - a[1]);
+    return groupArr.slice(0, topN);
   }
 
   async function init(forceReload = false) {
