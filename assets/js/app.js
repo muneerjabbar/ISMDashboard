@@ -491,7 +491,7 @@
     }, { plugins: { legend: { labels: { color: '#e8ecf8' } } } });
 
     // Age Group Pie:
-  const dobKey = getColNameMatch(Object.keys(rows[0]||{}), ['date of birth','dob','d.o.b','birth date','birthdate']);
+  const dobKey = getColNameMatch(Object.keys(rows[0]||{}), ['Date of Birth','date of birth','dob','d.o.b','birth date','birthdate']);
   if (dobKey) {
     const ag = parseAgeGroups(rows, dobKey);
       ensureChart('chart-age-group', 'pie', {
@@ -500,7 +500,7 @@
       }, {plugins:{legend:{labels:{color:'#e8ecf8'}}, datalabels:{color:'#e8ecf8', formatter:(v)=>v}}});
     }
       // Working Abroad pie/doughnut (Working Abroad / Not Abroad / Unknown)
-      const abroadKey = getColNameMatch(Object.keys(rows[0]||{}), ['working abroad','abroad','working_abroad','is working abroad','working abroad?']);
+      const abroadKey = getColNameMatch(Object.keys(rows[0]||{}), ['Working Abroad','working abroad','abroad','working_abroad','is working abroad','working abroad?']);
       if (abroadKey) {
         const counts = { working: 0, notWorking: 0, unknown: 0 };
         for (const r of rows) {
@@ -508,8 +508,8 @@
           const v = normalizeValue(raw);
           if (!v) { counts.unknown++; continue; }
           // interpret common affirmative/negative values
-          if (['yes','y','true','1','working abroad','abroad'].some(a => v === a || v.includes(a))) counts.working++;
-          else if (['no','n','false','0','local','not'].some(a => v === a || v.includes(a))) counts.notWorking++;
+          if (['Yes','yes','y','true','1','working abroad','abroad'].some(a => v === a || v.includes(a))) counts.working++;
+          else if (['No','no','n','false','0','local','not'].some(a => v === a || v.includes(a))) counts.notWorking++;
           else counts.unknown++;
         }
         ensureChart('chart-working-abroad', 'doughnut', {
