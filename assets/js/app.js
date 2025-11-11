@@ -496,9 +496,27 @@
     const ag = parseAgeGroups(rows, dobKey);
       ensureChart('chart-age-group', 'pie', {
         labels: Object.keys(ag),
-      datasets:[{data:Object.values(ag), backgroundColor: chartColors(5)}]
-    }, {plugins:{legend:{labels:{color:'#e8ecf8'}}, datalabels:{color:'#e8ecf8', formatter:(v)=>v}}});
+        datasets:[{data:Object.values(ag), backgroundColor: chartColors(Object.keys(ag).length)}]
+      }, {plugins:{legend:{labels:{color:'#e8ecf8'}}, datalabels:{color:'#e8ecf8', formatter:(v)=>v}}});
     }
+      // Working Abroad pie/doughnut (Working Abroad / Not Abroad / Unknown)
+      const abroadKey = getColNameMatch(Object.keys(rows[0]||{}), ['working abroad','abroad','working_abroad','is working abroad','working abroad?']);
+      if (abroadKey) {
+        const counts = { working: 0, notWorking: 0, unknown: 0 };
+        for (const r of rows) {
+          const raw = r[abroadKey];
+          const v = normalizeValue(raw);
+          if (!v) { counts.unknown++; continue; }
+          // interpret common affirmative/negative values
+          if (['yes','y','true','1','working abroad','abroad'].some(a => v === a || v.includes(a))) counts.working++;
+          else if (['no','n','false','0','local','not'].some(a => v === a || v.includes(a))) counts.notWorking++;
+          else counts.unknown++;
+        }
+        ensureChart('chart-working-abroad', 'doughnut', {
+          labels: ['Working Abroad','Not Abroad','Unknown'],
+          datasets: [{data: [counts.working, counts.notWorking, counts.unknown], backgroundColor: chartColors(3)}]
+        }, { plugins: { legend: { labels: { color: '#e8ecf8' } } } });
+      }
     // Profession:
   const professionKey = getColNameMatch(
     Object.keys(rows[0]||{}),
@@ -639,10 +657,23 @@
     elements.btnReset.addEventListener('click', () => { resetFilters(); regenerate(); showToast('Filters reset'); });
     elements.btnApply.addEventListener('click', () => { captureFiltersFromUI(); regenerate(); closeDrawer(); showToast('Filters applied'); });
     elements.btnRefresh.addEventListener('click', async () => {
-      // clear in-memory data and reload Excel
+      // clear in-memory data and reload Excel while attempting to bypass cache
       State.rawRows = [];
       State.filteredRows = [];
-      location.reload(); // ensures we re-fetch from server, not stale data
+      // Append a timestamp query param to each configured excel path to force a fresh fetch
+      try {
+        window.__EXCEL_PATHS__ = (window.__EXCEL_PATHS__ || []).map(p => {
+          // remove any previous _ts param then append a new one
+          const cleaned = p.replace(/[?&]_ts=\d+/, '');
+          const sep = cleaned.includes('?') ? '&' : '?';
+          return cleaned + sep + '_ts=' + Date.now();
+        });
+      } catch (e) {
+        // ignore
+      }
+      showToast('Refreshing data...');
+      await init(true);
+      showToast('Data refreshed (cache bypassed)');
     });
     elements.inputTopN.addEventListener('change', () => renderTable(State.filteredRows));
     const topD = document.getElementById('input-top-districts');
@@ -701,9 +732,10 @@ function toDate(value) {
 }
 function parseAgeGroups(rows, dobKey) {
     const ageGroups = {
-      '15-22': 0,
-      '22-30': 0,
-      '30-40': 0,
+      '15-18': 0,
+      '19-21': 0,
+      '22-29': 0,
+      '30-39': 0,
       '40-45': 0,
       'Unknown': 0
     };
@@ -717,11 +749,13 @@ function parseAgeGroups(rows, dobKey) {
       const m = today.getMonth() - dt.getMonth();
       if (m < 0 || (m === 0 && today.getDate() < dt.getDate())) age--;
     }
-      if (isNaN(age) || age < 10) { ageGroups['Unknown']++; continue; }
-      if (age >= 15 && age <= 22) ageGroups['15-22']++;
-      else if (age > 22 && age <= 30) ageGroups['22-30']++;
-      else if (age > 30 && age <= 40) ageGroups['30-40']++;
-      else if (age > 40 && age <= 45) ageGroups['40-45']++;
+      // Treat invalid or very young ages as Unknown
+      if (isNaN(age) || age < 15) { ageGroups['Unknown']++; continue; }
+      if (age >= 15 && age <= 18) ageGroups['15-18']++;
+      else if (age >= 19 && age <= 21) ageGroups['19-21']++;
+      else if (age >= 22 && age <= 29) ageGroups['22-29']++;
+      else if (age >= 30 && age <= 39) ageGroups['30-39']++;
+      else if (age >= 40 && age <= 45) ageGroups['40-45']++;
       else ageGroups['Unknown']++;
     }
     return ageGroups;

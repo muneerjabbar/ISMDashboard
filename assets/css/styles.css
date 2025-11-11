@@ -47,6 +47,16 @@ body {
   cursor: pointer;
 }
 .icon-btn { width: 36px; height: 36px; display: grid; place-items: center; }
+.icon-btn#btn-refresh { /* make refresh icon more noticeable */
+  width: 48px;
+  height: 48px;
+  font-size: 20px;
+  padding: 6px;
+  background: linear-gradient(180deg, var(--primary), var(--primary-700));
+  border-color: var(--primary-700);
+  box-shadow: 0 8px 24px rgba(79,124,255,0.12);
+}
+.icon-btn#btn-refresh:hover { transform: translateY(-2px); }
 .primary-btn { background: var(--primary); border-color: var(--primary-700); }
 .primary-btn:hover { background: var(--primary-700); }
 .secondary-btn { background: var(--panel-2); }
